@@ -1,0 +1,4 @@
+docker build -t hotstar-scraper .
+docker run -p 8080:5000 hotstar-scraper
+docker tag hotstar-scraper vijaykumardvk96/hotstar-scraper:latest
+docker push vijaykumardvk96/hotstar-scraper:latest
