@@ -38,6 +38,7 @@ def scrape_episode_data(url):
     user_data_dir = None
     try:
         options, user_data_dir = configure_chrome_options()
+        logging.info(f"User data directory for {url}: {user_data_dir}")
         driver = webdriver.Chrome(options=options)
         wait = WebDriverWait(driver, 15)
         driver.get(url)
