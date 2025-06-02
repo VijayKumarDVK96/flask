@@ -7,23 +7,16 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from flask import Flask, jsonify
 import re
-import tempfile
-import shutil
 
 app = Flask(__name__)
 
-def configure_chrome_options():
-    """Configures Chrome options for headless browsing."""
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--log-level=3")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    # Add a unique user data directory for each session
-    user_data_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={user_data_dir}")
-    return options, user_data_dir
+# Setup Chrome options
+options = webdriver.ChromeOptions()
+options.add_argument("--headless")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-gpu")
+options.add_argument("--log-level=3")
+options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
 def format_name_from_url(url):
     """Extracts and formats the show name from the URL."""
@@ -34,10 +27,7 @@ def format_name_from_url(url):
     return None
 
 def scrape_episode_data(url):
-    driver = None
-    user_data_dir = None
     try:
-        options, user_data_dir = configure_chrome_options()
         driver = webdriver.Chrome(options=options)
         wait = WebDriverWait(driver, 15)
         driver.get(url)
@@ -52,6 +42,7 @@ def scrape_episode_data(url):
         # Get the first episode card
         episodes = driver.find_elements(By.CSS_SELECTOR, '[data-testid="episode-card"]')
         if not episodes:
+            driver.quit()
             raise Exception(f"No episodes found for URL: {url}")
         first = episodes[0]
 
@@ -67,6 +58,7 @@ def scrape_episode_data(url):
         date_spans = date_container.find_elements(By.CSS_SELECTOR, "span.ON_IMAGE.LABEL_CAPTION1_SEMIBOLD")
         date_text = driver.execute_script("return arguments[0].textContent;", date_spans[1]).strip()
 
+        driver.quit()
         show_name = format_name_from_url(url)
         return {
             "title": title,
@@ -76,14 +68,10 @@ def scrape_episode_data(url):
         }
 
     except Exception as e:
+        if 'driver' in locals():
+            driver.quit()
         show_name = format_name_from_url(url)
         return {"error": str(e), "name": show_name}
-
-    finally:
-        if driver:
-            driver.quit()
-        if user_data_dir:
-            shutil.rmtree(user_data_dir, ignore_errors=True)
 
 @app.route('/scrape')
 def serve_multiple_data():
